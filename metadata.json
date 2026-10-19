@@ -1,0 +1,6 @@
+{
+  "name": "Gráfica Palanga — Gestão e Facturação",
+  "description": "Sistema completo de gestão comercial, orçamentos, encomendas, facturação interna, pagamentos, despesas e relatórios da Gráfica Palanga (Angola).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

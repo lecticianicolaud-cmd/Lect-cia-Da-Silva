@@ -1,0 +1,116 @@
+<svg viewBox="0 0 520 165" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Logótipo Oficial Gráfica Palanga — P&amp;Com">
+  <defs>
+    <!-- Gradiente de alta definição para as letras principais com base contrastada -->
+    <linearGradient id="palanga_primary_grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1D2B68" />
+      <stop offset="50%" stop-color="#0F2042" />
+      <stop offset="100%" stop-color="#0A1633" />
+    </linearGradient>
+
+    <!-- Gradiente brilhante para o símbolo comercial & -->
+    <linearGradient id="ampersand_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#78C6D8" />
+      <stop offset="100%" stop-color="#0C75AE" />
+    </linearGradient>
+
+    <!-- Gradientes do Globo Terrestre -->
+    <radialGradient id="globe_light" cx="30%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#78C6D8" />
+      <stop offset="60%" stop-color="#1D2B68" />
+      <stop offset="100%" stop-color="#0F1F45" />
+    </radialGradient>
+    <radialGradient id="globe_glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#78C6D8" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#1D2B68" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Filtro de sombra limpa e nítida -->
+    <filter id="clean_shadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0.5" dy="1.5" stdDeviation="0.8" flood-color="#021226" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Fundo limpo opcional para visualização isolada -->
+  <rect width="520" height="165" rx="12" fill="#FFFFFF" fill-opacity="0" />
+
+  <!-- Sombra de fundo suave -->
+  <ellipse cx="260" cy="158" rx="230" ry="4" fill="#000000" fill-opacity="0.06" />
+
+  <!-- 1. Letra P principal (Esquerda) -->
+  <g filter="url(#clean_shadow)">
+    <path
+      d="M 12 14 L 54 14 C 74 14 88 23 88 42 C 88 61 74 70 54 70 L 32 70 L 32 100 L 12 100 L 12 14 Z M 32 30 L 32 54 L 51 54 C 63 54 68 49 68 42 C 68 35 63 30 51 30 L 32 30 Z"
+      fill="url(#palanga_primary_grad)"
+      stroke="#023760"
+      stroke-width="0.8"
+      stroke-linejoin="round"
+    />
+  </g>
+
+  <!-- 2. Símbolo Comercial [&] centralizado entre P e C — Perfeitamente nítido -->
+  <g filter="url(#clean_shadow)">
+    <text
+      x="108"
+      y="70"
+      text-anchor="middle"
+      font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+      font-weight="900"
+      font-size="52"
+      fill="url(#ampersand_grad)"
+      stroke="#0A4A78"
+      stroke-width="1.2"
+    >
+      &amp;
+    </text>
+  </g>
+
+  <!-- 3. Letra C — Sem alterações no desenho original -->
+  <g filter="url(#clean_shadow)">
+    <path
+      d="M 220 28 C 205 14 179 14 158 31 C 144 43 140 60 140 76 C 140 93 146 111 161 123 C 180 138 206 137 221 123 L 208 108 C 197 117 180 117 167 107 C 160 101 157 90 157 76 C 157 61 161 50 169 44 C 180 34 196 34 207 43 Z"
+      fill="url(#palanga_primary_grad)"
+      stroke="#023760"
+      stroke-width="0.8"
+      stroke-linejoin="round"
+    />
+  </g>
+
+  <!-- 4. Globo Terrestre (Representando o O) — Perfeitamente preservado -->
+  <g transform="translate(290, 72)" filter="url(#clean_shadow)">
+    <circle cx="0" cy="0" r="42" fill="url(#globe_glow)" />
+    <circle cx="0" cy="0" r="35" fill="url(#globe_light)" />
+    <ellipse cx="0" cy="0" rx="48" ry="19" fill="none" stroke="#E1F5FE" stroke-width="3.2" transform="rotate(-15)" stroke-dasharray="70 145" />
+    <ellipse cx="0" cy="0" rx="48" ry="19" fill="none" stroke="#0C75AE" stroke-width="2.2" transform="rotate(-15)" stroke-dasharray="65 150" />
+    <circle cx="39" cy="-15" r="3.2" fill="#FFFFFF" filter="url(#clean_shadow)" />
+  </g>
+
+  <!-- 5. Letra m — Sem alterações no desenho original -->
+  <g filter="url(#clean_shadow)">
+    <path
+      d="M 390 31 L 415 31 L 415 44 C 421 34 431 31 441 31 C 452 31 460 35 464 45 C 472 34 483 31 494 31 C 511 31 520 42 520 60 L 520 100 L 495 100 L 495 64 C 495 55 491 50 484 50 C 477 50 472 55 472 64 L 472 100 L 447 100 L 447 64 C 447 55 443 50 436 50 C 429 50 424 55 424 64 L 424 100 L 399 100 L 399 50 L 390 50 Z"
+      fill="url(#palanga_primary_grad)"
+      stroke="#023760"
+      stroke-width="0.8"
+      stroke-linejoin="round"
+    />
+  </g>
+
+  <!-- 6. Linha horizontal separadora com espaçamento harmonioso -->
+  <line x1="10" y1="110" x2="512" y2="110" stroke="#0A5A8E" stroke-width="2.5" stroke-linecap="round" />
+
+  <!-- 7. Texto Oficial com o "P" de Palanga destacado, ultra nítido, com margem esquerda generosa para evitar qualquer corte -->
+  <text x="18" y="137" text-anchor="start" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" letter-spacing="0.2">
+    <tspan fill="#001B33" font-weight="950" font-size="24">P</tspan><tspan fill="#033257" font-weight="750" font-size="20">alanga - Comércio e Prestação de Serviços (SU), Lda.</tspan>
+  </text>
+
+  <!-- 8. Lema Oficial -->
+  <g>
+    <line x1="20" y1="153" x2="78" y2="153" stroke="#1889C5" stroke-width="1.5" />
+    <polygon points="78,153 73,151 73,155" fill="#1889C5" />
+    <text x="260" y="157" text-anchor="middle" fill="#0E5E8F" font-size="13" font-weight="800" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" letter-spacing="4.5">
+      QUALIDADE • CONFIANÇA • SOLUÇÕES
+    </text>
+    <line x1="442" y1="153" x2="500" y2="153" stroke="#1889C5" stroke-width="1.5" />
+    <polygon points="442,153 447,151 447,155" fill="#1889C5" />
+  </g>
+</svg>
