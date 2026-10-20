@@ -46,7 +46,9 @@ export interface DatabaseSchema {
   };
 }
 
-const DATA_DIR = path.resolve(process.cwd(), 'data');
+const isVercel = Boolean(process.env.VERCEL);
+const ROOT_DATA_DIR = path.resolve(process.cwd(), 'data');
+const DATA_DIR = isVercel ? path.resolve('/tmp', 'data') : ROOT_DATA_DIR;
 const BACKUPS_DIR = path.resolve(DATA_DIR, 'backups');
 const DB_FILE = path.resolve(DATA_DIR, 'database.json');
 
@@ -59,11 +61,22 @@ class DatabaseManager {
   }
 
   private ensureDirectories() {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    if (!fs.existsSync(BACKUPS_DIR)) {
-      fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+    try {
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      }
+      if (!fs.existsSync(BACKUPS_DIR)) {
+        fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+      }
+      // No Vercel Serverless, copiar base de dados inicial do repositório para a pasta temporária gravável (/tmp)
+      if (isVercel && !fs.existsSync(DB_FILE)) {
+        const rootDbFile = path.resolve(ROOT_DATA_DIR, 'database.json');
+        if (fs.existsSync(rootDbFile)) {
+          fs.copyFileSync(rootDbFile, DB_FILE);
+        }
+      }
+    } catch (err) {
+      console.warn('Aviso ao configurar diretórios de dados:', err);
     }
   }
 

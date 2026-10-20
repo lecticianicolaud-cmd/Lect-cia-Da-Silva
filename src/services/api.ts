@@ -51,6 +51,14 @@ export const api = {
       return {} as T; // Return empty to avoid downstream errors during redirect
     }
 
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      await response.text();
+      throw new Error(
+        `O servidor da API não respondeu em formato JSON (Código HTTP ${response.status}). Certifique-se de que o backend da API está ativo.`
+      );
+    }
+
     const data = await response.json();
 
     if (!response.ok) {
