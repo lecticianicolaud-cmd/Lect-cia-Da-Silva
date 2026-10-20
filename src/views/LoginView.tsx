@@ -55,9 +55,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onAccessSe
     }
   };
 
-  const fillQuick = (userIdentifier: string, userPass: string) => {
+  const fillQuick = (userIdentifier: string) => {
     setIdentifier(userIdentifier);
-    setPassword(userPass);
+    setPassword('');
     setError(null);
   };
 
@@ -168,21 +168,21 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onAccessSe
             <div className="grid grid-cols-3 gap-1.5 text-[10px]">
               <button
                 type="button"
-                onClick={() => fillQuick('ADM-001', '0000')}
+                onClick={() => fillQuick('ADM-001')}
                 className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded font-medium text-center transition-colors border border-slate-200"
               >
                 Admin (ADM-001)
               </button>
               <button
                 type="button"
-                onClick={() => fillQuick('OP-001', '0000')}
+                onClick={() => fillQuick('OP-001')}
                 className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded font-medium text-center transition-colors border border-slate-200"
               >
                 Funcionário (OP-001)
               </button>
               <button
                 type="button"
-                onClick={() => fillQuick('FIN-001', '0000')}
+                onClick={() => fillQuick('FIN-001')}
                 className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded font-medium text-center transition-colors border border-slate-200"
               >
                 Financeiro (FIN-001)

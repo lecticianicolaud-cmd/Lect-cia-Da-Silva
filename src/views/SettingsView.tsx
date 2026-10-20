@@ -47,7 +47,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [newRole, setNewRole] = useState<UserRole>('operador');
   const [newPin, setNewPin] = useState('');
   const [newAdminPin, setNewAdminPin] = useState('');
-  const [showNewPin, setShowNewPin] = useState(true);
+  const [showNewPin, setShowNewPin] = useState(false);
   const [showNewAdminPin, setShowNewAdminPin] = useState(false);
   const [savingNewUser, setSavingNewUser] = useState(false);
 
@@ -68,7 +68,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [quickPin, setQuickPin] = useState('');
   const [confirmQuickPin, setConfirmQuickPin] = useState('');
   const [quickAdminPin, setQuickAdminPin] = useState('');
-  const [showQuickPin, setShowQuickPin] = useState(true);
+  const [showQuickPin, setShowQuickPin] = useState(false);
   const [showQuickAdminPin, setShowQuickAdminPin] = useState(false);
   const [savingQuickPin, setSavingQuickPin] = useState(false);
 
@@ -136,8 +136,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setNewEmployeeId('');
       setNewName('');
       setNewRole('operador');
-      setNewPin('0000');
-      setNewAdminPin('0000');
+      setNewPin('');
+      setNewAdminPin('');
+      setShowNewPin(false);
+      setShowNewAdminPin(false);
       await fetchUsers();
       setTimeout(() => setActionSuccess(null), 4000);
     } catch (err: any) {
@@ -153,8 +155,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setEditEmployeeId(u.employeeId || '');
     setEditName(u.name || '');
     setEditRole(u.role);
-    setEditPin(u.pin || '0000');
-    setEditAdminPin('0000');
+    setEditPin('');
+    setEditAdminPin('');
     setEditActive(u.active);
     setShowEditPin(false);
     setShowEditAdminPin(false);
@@ -227,11 +229,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         adminPin: quickAdminPin.trim(),
       });
 
-      setActionSuccess(`PIN de "${pinModalUser.name}" alterado com sucesso para "${quickPin.trim()}" (autorizado por PIN Admin).`);
+      setActionSuccess(`PIN de "${pinModalUser.name}" alterado com sucesso (autorizado por PIN Admin).`);
       setPinModalUser(null);
       setQuickPin('');
       setConfirmQuickPin('');
-      setQuickAdminPin('0000');
+      setQuickAdminPin('');
+      setShowQuickPin(false);
+      setShowQuickAdminPin(false);
       await fetchUsers();
       setTimeout(() => setActionSuccess(null), 4000);
     } catch (err: any) {
@@ -261,7 +265,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       setActionSuccess(`Estado de "${toggleConfirmUser.name}" alterado para ${!toggleConfirmUser.active ? 'Activo' : 'Inactivo'} com autorização de Administrador.`);
       setToggleConfirmUser(null);
-      setToggleAdminPin('0000');
+      setToggleAdminPin('');
+      setShowToggleAdminPin(false);
       await fetchUsers();
       setTimeout(() => setActionSuccess(null), 3000);
     } catch (err: any) {
@@ -343,8 +348,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               setNewEmployeeId('');
               setNewName('');
               setNewRole('operador');
-              setNewPin('0000');
-              setNewAdminPin('0000');
+              setNewPin('');
+              setNewAdminPin('');
+              setShowNewPin(false);
+              setShowNewAdminPin(false);
               setNewUserModalOpen(true);
             }}
             className="flex items-center gap-2 bg-[#1D2B68] hover:bg-[#15204e] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm hover:shadow"
@@ -562,9 +569,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           <button
                             onClick={() => {
                               setPinModalUser(u);
-                              setQuickPin(u.pin || '0000');
-                              setConfirmQuickPin(u.pin || '0000');
-                              setQuickAdminPin('0000');
+                              setQuickPin('');
+                              setConfirmQuickPin('');
+                              setQuickAdminPin('');
+                              setShowQuickPin(false);
+                              setShowQuickAdminPin(false);
                             }}
                             className="bg-blue-50 hover:bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-lg border border-blue-200 transition-colors flex items-center gap-1"
                             title="Alterar Apenas o PIN de Acesso"
@@ -576,7 +585,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           <button
                             onClick={() => {
                               setToggleConfirmUser(u);
-                              setToggleAdminPin('0000');
+                              setToggleAdminPin('');
+                              setShowToggleAdminPin(false);
                             }}
                             className={`text-xs font-bold px-2 py-1 rounded-lg border transition-colors ${
                               u.active
