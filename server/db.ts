@@ -151,7 +151,90 @@ class DatabaseManager {
         },
       ],
       quotes: [],
-      invoices: [],
+      invoices: [
+        {
+          id: 'fac_exemplo_1',
+          invoiceNumber: 'FAC-2025-0001',
+          clientId: 'cli_exemplo_1',
+          clientName: 'Colégio Nova Esperança',
+          clientPhone: '923 445 670',
+          clientEmail: 'secretaria@novaesperanca.co.ao',
+          clientNif: '5412984012',
+          clientAddress: 'Luanda, Angola',
+          items: [
+            {
+              id: 'item_fac_1',
+              serviceId: 'srv_copia_pb_fv',
+              serviceCode: 'CPB-03',
+              description: 'Cópia P&B — Frente e Verso (Testes Escolares)',
+              category: 'Cópia P&B',
+              unit: 'unid',
+              quantity: 500,
+              unitPrice: 50,
+              subtotal: 25000,
+              isUnderConsultation: false,
+              notes: '',
+              materialProvidedByClient: false,
+            },
+          ],
+          subtotal: 25000,
+          discountType: 'none',
+          discountValue: 0,
+          discountAmount: 0,
+          taxRate: 0,
+          taxAmount: 0,
+          total: 25000,
+          paidAmount: 10000,
+          balance: 15000,
+          paymentStatus: 'parcialmente_pago',
+          paymentMethod: 'transferencia',
+          createdAt: '2025-07-29T10:00:00.000Z',
+          updatedAt: '2025-07-29T10:00:00.000Z',
+          createdBy: 'usr_admin',
+          creatorName: 'Administrador do Sistema',
+        },
+        {
+          id: 'fac_exemplo_2',
+          invoiceNumber: 'FAC-2025-0002',
+          clientId: 'cli_exemplo_2',
+          clientName: 'Agência de Publicidade Criativa Lda',
+          clientPhone: '912 300 450',
+          clientEmail: 'contacto@criativa.co.ao',
+          clientNif: '5401928374',
+          clientAddress: 'Talatona, Luanda',
+          items: [
+            {
+              id: 'item_fac_2',
+              serviceId: 'srv_lona_impressa',
+              serviceCode: 'LON-01',
+              description: 'Lona Publicitária com Ilhós — Evento Anual',
+              category: 'Grandes Formatos',
+              unit: 'metro',
+              quantity: 10,
+              unitPrice: 4500,
+              subtotal: 45000,
+              isUnderConsultation: false,
+              notes: '',
+              materialProvidedByClient: false,
+            },
+          ],
+          subtotal: 45000,
+          discountType: 'none',
+          discountValue: 0,
+          discountAmount: 0,
+          taxRate: 0,
+          taxAmount: 0,
+          total: 45000,
+          paidAmount: 0,
+          balance: 45000,
+          paymentStatus: 'por_pagar',
+          paymentMethod: 'multicaixa',
+          createdAt: '2025-07-30T14:00:00.000Z',
+          updatedAt: '2025-07-30T14:00:00.000Z',
+          createdBy: 'usr_admin',
+          creatorName: 'Administrador do Sistema',
+        },
+      ],
       payments: [],
       orders: [],
       expenses: [],
@@ -171,7 +254,7 @@ class DatabaseManager {
       ],
       counters: {
         quotes: 0,
-        invoices: 0,
+        invoices: 2,
         orders: 0,
         payments: 0,
         expenses: 0,
@@ -183,10 +266,18 @@ class DatabaseManager {
   }
 
   private saveDataDirect(data: DatabaseSchema) {
-    const tmpFile = `${DB_FILE}.tmp.${Date.now()}`;
-    const serialized = JSON.stringify(data, null, 2);
-    fs.writeFileSync(tmpFile, serialized, 'utf-8');
-    fs.renameSync(tmpFile, DB_FILE);
+    try {
+      const dir = path.dirname(DB_FILE);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const tmpFile = `${DB_FILE}.tmp.${Date.now()}`;
+      const serialized = JSON.stringify(data, null, 2);
+      fs.writeFileSync(tmpFile, serialized, 'utf-8');
+      fs.renameSync(tmpFile, DB_FILE);
+    } catch (err) {
+      console.warn('[DB] Aviso: Não foi possível persistir base de dados no disco (mantida em memória):', err);
+    }
   }
 
   public save() {
