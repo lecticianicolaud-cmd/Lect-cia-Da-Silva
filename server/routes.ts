@@ -350,7 +350,22 @@ apiRouter.post('/catalog', authenticate, authorizeRoles('admin'), (req: Authenti
 apiRouter.put('/catalog/:id', authenticate, authorizeRoles('admin'), (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, category, unit, basePrice, pricingType, tiers, allowsCustomMaterial, customMaterialPrice, notes, active, reason } = req.body;
+    const {
+      name,
+      category,
+      unit,
+      basePrice,
+      pricingType,
+      tiers,
+      allowsCustomMaterial,
+      customMaterialPrice,
+      notes,
+      active,
+      reason,
+      stockQuantity,
+      minStockThreshold,
+      trackStock,
+    } = req.body;
 
     const service = db.getData().services.find((s) => s.id === id);
     if (!service) {
@@ -386,6 +401,9 @@ apiRouter.put('/catalog/:id', authenticate, authorizeRoles('admin'), (req: Authe
     if (customMaterialPrice !== undefined) service.customMaterialPrice = Number(customMaterialPrice);
     if (notes !== undefined) service.notes = notes;
     if (active !== undefined) service.active = Boolean(active);
+    if (stockQuantity !== undefined) service.stockQuantity = Number(stockQuantity);
+    if (minStockThreshold !== undefined) service.minStockThreshold = Number(minStockThreshold);
+    if (trackStock !== undefined) service.trackStock = Boolean(trackStock);
     service.updatedAt = new Date().toISOString();
 
     db.save();
@@ -1493,6 +1511,29 @@ apiRouter.get('/dashboard/stats', authenticate, (req: AuthenticatedRequest, res:
       .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
       .slice(0, 8);
 
+    // Alertas de Inventário / Stock Mínimo
+    const allServices = db.getData().services || [];
+    const lowStockItems = allServices
+      .filter(
+        (s) =>
+          s.active &&
+          s.trackStock &&
+          typeof s.stockQuantity === 'number' &&
+          typeof s.minStockThreshold === 'number' &&
+          s.stockQuantity <= s.minStockThreshold
+      )
+      .map((s) => ({
+        id: s.id,
+        code: s.code,
+        name: s.name,
+        category: s.category,
+        unit: s.unit,
+        stockQuantity: s.stockQuantity ?? 0,
+        minStockThreshold: s.minStockThreshold ?? 0,
+        isCritical: (s.stockQuantity ?? 0) <= 0 || (s.stockQuantity ?? 0) <= (s.minStockThreshold ?? 10) * 0.3,
+      }))
+      .sort((a, b) => a.stockQuantity / (a.minStockThreshold || 1) - b.stockQuantity / (b.minStockThreshold || 1));
+
     return res.json({
       totalInvoicedToday,
       totalInvoicedMonth,
@@ -1507,6 +1548,8 @@ apiRouter.get('/dashboard/stats', authenticate, (req: AuthenticatedRequest, res:
       topSellingServices,
       recentActivity,
       lastInvoices: invoices.slice(0, 5),
+      lowStockItems,
+      lowStockCount: lowStockItems.length,
     });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });

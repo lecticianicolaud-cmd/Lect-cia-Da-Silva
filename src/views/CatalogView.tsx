@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import {
   AlertCircle,
+  AlertTriangle,
+  Boxes,
   Calendar,
   Edit2,
   Filter,
@@ -26,9 +28,13 @@ export const CatalogView: React.FC<CatalogViewProps> = ({ currentUser }) => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todas');
+  const [stockStatusFilter, setStockStatusFilter] = useState<'all' | 'low_stock' | 'tracked'>('all');
   const [editingService, setEditingService] = useState<CatalogService | null>(null);
   const [editPrice, setEditPrice] = useState<number>(0);
   const [editReason, setEditReason] = useState<string>('');
+  const [editTrackStock, setEditTrackStock] = useState<boolean>(false);
+  const [editStockQuantity, setEditStockQuantity] = useState<number>(0);
+  const [editMinStockThreshold, setEditMinStockThreshold] = useState<number>(10);
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [auditLogs, setAuditLogs] = useState<PriceAuditLog[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -69,13 +75,38 @@ export const CatalogView: React.FC<CatalogViewProps> = ({ currentUser }) => {
       s.name.toLowerCase().includes(search.toLowerCase()) ||
       s.code.toLowerCase().includes(search.toLowerCase()) ||
       (s.notes && s.notes.toLowerCase().includes(search.toLowerCase()));
-    return matchesCategory && matchesSearch;
+
+    const matchesStock =
+      stockStatusFilter === 'all'
+        ? true
+        : stockStatusFilter === 'low_stock'
+        ? Boolean(
+            s.trackStock &&
+              typeof s.stockQuantity === 'number' &&
+              typeof s.minStockThreshold === 'number' &&
+              s.stockQuantity <= s.minStockThreshold
+          )
+        : Boolean(s.trackStock);
+
+    return matchesCategory && matchesSearch && matchesStock;
   });
+
+  const lowStockCount = services.filter(
+    (s) =>
+      s.active &&
+      s.trackStock &&
+      typeof s.stockQuantity === 'number' &&
+      typeof s.minStockThreshold === 'number' &&
+      s.stockQuantity <= s.minStockThreshold
+  ).length;
 
   const handleEditClick = (service: CatalogService) => {
     setEditingService(service);
     setEditPrice(service.basePrice);
     setEditReason('');
+    setEditTrackStock(Boolean(service.trackStock));
+    setEditStockQuantity(service.stockQuantity ?? 0);
+    setEditMinStockThreshold(service.minStockThreshold ?? 10);
     setActionError(null);
   };
 
@@ -99,13 +130,16 @@ export const CatalogView: React.FC<CatalogViewProps> = ({ currentUser }) => {
       await api.updateCatalogService(editingService.id, {
         basePrice: editPrice,
         reason: editReason,
+        trackStock: editTrackStock,
+        stockQuantity: editTrackStock ? Number(editStockQuantity) : undefined,
+        minStockThreshold: editTrackStock ? Number(editMinStockThreshold) : undefined,
       });
-      setActionSuccess(`Preço do serviço "${editingService.name}" atualizado com sucesso!`);
+      setActionSuccess(`Serviço "${editingService.name}" e dados de stock atualizados com sucesso!`);
       setEditingService(null);
       await fetchCatalog();
       setTimeout(() => setActionSuccess(null), 4000);
     } catch (err: any) {
-      setActionError(err.message || 'Falha ao atualizar preço.');
+      setActionError(err.message || 'Falha ao atualizar serviço.');
     } finally {
       setSubmitting(false);
     }
@@ -186,19 +220,33 @@ export const CatalogView: React.FC<CatalogViewProps> = ({ currentUser }) => {
         </div>
 
         <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-          <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          <span className="text-xs text-slate-500 shrink-0">Categoria:</span>
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#78C6D8]"
-          >
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Boxes className="w-3.5 h-3.5 text-slate-400" />
+            <select
+              value={stockStatusFilter}
+              onChange={(e) => setStockStatusFilter(e.target.value as any)}
+              className="text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#78C6D8] font-medium"
+            >
+              <option value="all">Todo o Inventário</option>
+              <option value="low_stock">⚠️ Stock Baixo / Alertas ({lowStockCount})</option>
+              <option value="tracked">Apenas Itens com Stock</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#78C6D8]"
+            >
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -222,6 +270,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({ currentUser }) => {
                   <th className="py-3 px-4 font-semibold">Categoria</th>
                   <th className="py-3 px-4 font-semibold">Nome do Serviço</th>
                   <th className="py-3 px-4 font-semibold text-center">Unidade</th>
+                  <th className="py-3 px-4 font-semibold text-center">Stock</th>
                   <th className="py-3 px-4 font-semibold text-right">Preço Oficial</th>
                   <th className="py-3 px-4 font-semibold text-left">Regras & Condições</th>
                   {currentUser?.role === 'admin' && (
@@ -245,6 +294,38 @@ export const CatalogView: React.FC<CatalogViewProps> = ({ currentUser }) => {
                     </td>
                     <td className="py-2.5 px-4 text-center text-slate-600 capitalize">
                       {service.unit}
+                    </td>
+                    <td className="py-2.5 px-4 text-center">
+                      {service.trackStock ? (
+                        service.stockQuantity !== undefined &&
+                        service.minStockThreshold !== undefined &&
+                        service.stockQuantity <= service.minStockThreshold ? (
+                          <span
+                            className={`inline-flex items-center gap-1 font-bold text-[10px] px-2 py-0.5 rounded-full ${
+                              service.stockQuantity <= (service.minStockThreshold * 0.3)
+                                ? 'bg-red-100 text-red-800 border border-red-200'
+                                : 'bg-amber-100 text-amber-800 border border-amber-200'
+                            }`}
+                            title={`Nível mínimo de segurança: ${service.minStockThreshold} ${service.unit}`}
+                          >
+                            <AlertTriangle className="w-3 h-3 text-red-600" />
+                            <span>
+                              {service.stockQuantity} / {service.minStockThreshold} {service.unit}
+                            </span>
+                          </span>
+                        ) : (
+                          <span
+                            className="inline-flex items-center gap-1 font-semibold text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            title={`Stock suficiente. Mínimo: ${service.minStockThreshold} ${service.unit}`}
+                          >
+                            <span>
+                              {service.stockQuantity ?? 0} {service.unit}
+                            </span>
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-slate-400 text-[10px]">—</span>
+                      )}
                     </td>
                     <td className="py-2.5 px-4 text-right">
                       {service.pricingType === 'on_request' ? (
@@ -282,7 +363,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({ currentUser }) => {
                         <button
                           onClick={() => handleEditClick(service)}
                           className="p-1.5 text-slate-500 hover:text-[#1D2B68] hover:bg-slate-100 rounded-md transition-colors"
-                          title="Editar Preço (Registo Auditado)"
+                          title="Editar Preço e Stock"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
@@ -321,6 +402,53 @@ export const CatalogView: React.FC<CatalogViewProps> = ({ currentUser }) => {
                   onChange={(e) => setEditPrice(Number(e.target.value))}
                   className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#78C6D8]"
                 />
+              </div>
+
+              {/* Controlo de Stock e Inventário */}
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={editTrackStock}
+                    onChange={(e) => setEditTrackStock(e.target.checked)}
+                    className="w-4 h-4 text-[#1D2B68] rounded focus:ring-[#78C6D8]"
+                  />
+                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Boxes className="w-3.5 h-3.5 text-[#1D2B68]" />
+                    Ativar Controlo de Stock para este item
+                  </span>
+                </label>
+
+                {editTrackStock && (
+                  <div className="grid grid-cols-2 gap-2.5 pt-1 animate-in fade-in">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                        Stock Atual ({editingService.unit})
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={editStockQuantity}
+                        onChange={(e) => setEditStockQuantity(Math.max(0, Number(e.target.value)))}
+                        className="w-full px-2.5 py-1.5 text-xs font-bold border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#78C6D8]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                        Mínimo Alerta ({editingService.unit})
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={editMinStockThreshold}
+                        onChange={(e) => setEditMinStockThreshold(Math.max(0, Number(e.target.value)))}
+                        className="w-full px-2.5 py-1.5 text-xs font-bold border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#78C6D8]"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>

@@ -294,10 +294,18 @@ export const api = {
     id: string,
     payload: Partial<CatalogService> & { reason?: string }
   ): Promise<CatalogService> {
-    return this.request<CatalogService>(`/catalog/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    });
+    try {
+      return await this.request<CatalogService>(`/catalog/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+    } catch (err: any) {
+      if (isFallbackError(err)) {
+        useClientStorageFallback = true;
+        return clientStorage.updateCatalogService(id, payload);
+      }
+      throw err;
+    }
   },
 
   async getPriceHistory(): Promise<PriceAuditLog[]> {

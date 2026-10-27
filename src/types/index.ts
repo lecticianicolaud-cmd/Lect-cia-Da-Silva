@@ -47,6 +47,20 @@ export interface CatalogService {
   active: boolean;
   effectiveDate: string; // '2025-07-28'
   updatedAt: string;
+  stockQuantity?: number; // Quantidade atual em armazém/stock
+  minStockThreshold?: number; // Nível mínimo definido para alerta de inventário
+  trackStock?: boolean; // Se o item possui controlo de stock activo
+}
+
+export interface LowStockAlertItem {
+  id: string;
+  code: string;
+  name: string;
+  category: string;
+  unit: string;
+  stockQuantity: number;
+  minStockThreshold: number;
+  isCritical: boolean;
 }
 
 export interface PriceAuditLog {

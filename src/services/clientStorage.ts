@@ -205,6 +205,28 @@ export const clientStorage = {
     setStorage('catalog', services);
   },
 
+  updateCatalogService(
+    id: string,
+    payload: Partial<CatalogService> & { reason?: string }
+  ): CatalogService {
+    const services = getStorage<CatalogService[]>(
+      'catalog',
+      (databaseSeed.services as CatalogService[]) || []
+    );
+    const index = services.findIndex((s) => s.id === id);
+    if (index === -1) {
+      throw new Error('Serviço não encontrado no catálogo.');
+    }
+    const updated: CatalogService = {
+      ...services[index],
+      ...payload,
+      updatedAt: new Date().toISOString(),
+    };
+    services[index] = updated;
+    this.saveCatalog(services);
+    return updated;
+  },
+
   // Clientes
   getClients(search?: string): Client[] {
     const clients = getStorage<Client[]>(
@@ -512,26 +534,119 @@ export const clientStorage = {
 
   // Dashboard Stats
   getDashboardStats(): any {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const currentMonthPrefix = todayStr.substring(0, 7);
+
     const quotes = this.getQuotes();
-    const invoices = this.getInvoices();
-    const payments = this.getPayments();
+    const invoices = this.getInvoices().filter((i) => !i.isCancelled);
+    const payments = this.getPayments().filter((p) => !p.isReversed);
     const orders = this.getOrders();
     const expenses = this.getExpenses();
+    const services = this.getCatalog();
 
-    const totalInvoiced = invoices.reduce((acc, inv) => acc + (inv.total || 0), 0);
-    const totalCollected = payments.reduce((acc, p) => acc + (p.amount || 0), 0);
-    const totalPending = invoices.reduce((acc, inv) => acc + (inv.balance || 0), 0);
-    const totalExpenses = expenses.reduce((acc, e) => acc + (e.amount || 0), 0);
+    const totalInvoicedToday = invoices
+      .filter((i) => i.createdAt.startsWith(todayStr))
+      .reduce((sum, i) => sum + (i.total || 0), 0);
+
+    const totalInvoicedMonth = invoices
+      .filter((i) => i.createdAt.startsWith(currentMonthPrefix))
+      .reduce((sum, i) => sum + (i.total || 0), 0);
+
+    const totalReceived = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+    const totalPendingDebt = invoices.reduce((sum, i) => sum + (i.balance || 0), 0);
+    const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+    const estimatedResult = totalInvoicedMonth - totalExpenses;
+
+    const ordersInProduction = orders.filter(
+      (o) => o.productionStatus === 'em_producao' || o.productionStatus === 'em_acabamento'
+    ).length;
+
+    const ordersReadyForPickup = orders.filter((o) => o.productionStatus === 'pronta').length;
+    const pendingQuotesCount = quotes.filter((q) => q.status === 'pendente').length;
+
+    const overdueOrders = orders.filter(
+      (o) =>
+        o.deadlineDate < todayStr &&
+        o.productionStatus !== 'entregue' &&
+        o.productionStatus !== 'cancelada'
+    );
+
+    // Serviços mais vendidos
+    const serviceSalesMap: Record<string, { name: string; quantity: number; revenue: number }> = {};
+    invoices.forEach((inv) => {
+      inv.items.forEach((item) => {
+        if (!serviceSalesMap[item.serviceCode]) {
+          serviceSalesMap[item.serviceCode] = { name: item.description, quantity: 0, revenue: 0 };
+        }
+        serviceSalesMap[item.serviceCode].quantity += item.quantity;
+        serviceSalesMap[item.serviceCode].revenue += item.subtotal;
+      });
+    });
+
+    const topSellingServices = Object.values(serviceSalesMap)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+
+    // Atividade recente
+    const recentActivity = [
+      ...payments.map((p) => ({
+        type: 'pagamento',
+        title: `Pagamento recebido: ${p.receiptNumber}`,
+        client: p.clientName,
+        amount: p.amount,
+        date: p.paymentDate,
+        timestamp: p.createdAt,
+      })),
+      ...invoices.map((i) => ({
+        type: 'factura',
+        title: `Factura emitida: ${i.invoiceNumber}`,
+        client: i.clientName,
+        amount: i.total,
+        date: i.createdAt.split('T')[0],
+        timestamp: i.createdAt,
+      })),
+    ]
+      .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+      .slice(0, 8);
+
+    // Alertas de Inventário & Stock Mínimo
+    const lowStockItems = services
+      .filter(
+        (s) =>
+          s.active &&
+          s.trackStock &&
+          typeof s.stockQuantity === 'number' &&
+          typeof s.minStockThreshold === 'number' &&
+          s.stockQuantity <= s.minStockThreshold
+      )
+      .map((s) => ({
+        id: s.id,
+        code: s.code,
+        name: s.name,
+        category: s.category,
+        unit: s.unit,
+        stockQuantity: s.stockQuantity ?? 0,
+        minStockThreshold: s.minStockThreshold ?? 0,
+        isCritical: (s.stockQuantity ?? 0) <= 0 || (s.stockQuantity ?? 0) <= (s.minStockThreshold ?? 10) * 0.3,
+      }))
+      .sort((a, b) => (a.stockQuantity / (a.minStockThreshold || 1)) - (b.stockQuantity / (b.minStockThreshold || 1)));
 
     return {
-      monthlyRevenue: totalCollected,
-      pendingQuotes: quotes.filter((q) => q.status === 'pendente').length,
-      activeOrders: orders.filter((o) => o.productionStatus !== 'entregue' && o.productionStatus !== 'cancelada').length,
-      debtBalance: totalPending,
-      totalInvoiced,
+      totalInvoicedToday,
+      totalInvoicedMonth,
+      totalReceived,
+      totalPendingDebt,
       totalExpenses,
-      recentInvoices: invoices.slice(0, 5),
-      recentQuotes: quotes.slice(0, 5),
+      estimatedResult,
+      ordersInProduction,
+      ordersReadyForPickup,
+      pendingQuotesCount,
+      overdueOrdersCount: overdueOrders.length,
+      topSellingServices,
+      recentActivity,
+      lastInvoices: invoices.slice(0, 5),
+      lowStockItems,
+      lowStockCount: lowStockItems.length,
     };
   },
 };
