@@ -6,18 +6,21 @@ import {
   EyeOff,
   KeyRound,
   Lock,
+  Mail,
   Plus,
   RefreshCw,
   Search,
+  Send,
   Shield,
   ShieldAlert,
   ShieldCheck,
+  Sparkles,
   UserCheck,
   UserPlus,
   Users,
 } from 'lucide-react';
 import { api } from '../services/api';
-import { User, UserRole } from '../types';
+import { SmtpConfig, User, UserRole } from '../types';
 
 interface SettingsViewProps {
   currentUser: User | null;
@@ -78,6 +81,29 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [showToggleAdminPin, setShowToggleAdminPin] = useState(false);
   const [savingToggle, setSavingToggle] = useState(false);
 
+  // Tab State
+  const [activeTab, setActiveTab] = useState<'users' | 'smtp'>('users');
+
+  // SMTP State
+  const [smtpConfig, setSmtpConfig] = useState<SmtpConfig>({
+    host: '',
+    port: 587,
+    secure: false,
+    user: '',
+    pass: '',
+    senderEmail: '',
+    senderName: 'Gráfica Palanga',
+    enabled: false,
+  });
+  const [smtpLoading, setSmtpLoading] = useState(false);
+  const [savingSmtp, setSavingSmtp] = useState(false);
+  const [testingSmtp, setTestingSmtp] = useState(false);
+  const [testEmailRecipient, setTestEmailRecipient] = useState('');
+  const [showSmtpPassword, setShowSmtpPassword] = useState(false);
+  const [smtpAdminPin, setSmtpAdminPin] = useState('');
+  const [showSmtpAdminPin, setShowSmtpAdminPin] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
   const fetchUsers = async () => {
     if (currentUser?.role !== 'admin') {
       setLoading(false);
@@ -95,8 +121,94 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
+  const fetchSmtp = async () => {
+    try {
+      setSmtpLoading(true);
+      const data = await api.getSmtpSettings();
+      if (data) {
+        setSmtpConfig({
+          host: data.host || '',
+          port: data.port || 587,
+          secure: Boolean(data.secure),
+          user: data.user || '',
+          pass: data.pass || '',
+          senderEmail: data.senderEmail || '',
+          senderName: data.senderName || 'Gráfica Palanga',
+          enabled: Boolean(data.enabled),
+        });
+        if (currentUser?.email && !testEmailRecipient) {
+          setTestEmailRecipient(currentUser.email);
+        }
+      }
+    } catch (err: any) {
+      console.warn('Erro ao carregar configurações SMTP:', err);
+    } finally {
+      setSmtpLoading(false);
+    }
+  };
+
+  const handleSaveSmtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setActionError(null);
+    setActionSuccess(null);
+    setTestResult(null);
+
+    if (!smtpAdminPin.trim()) {
+      setActionError('É obrigatório introduzir o PIN de Administrador para gravar as configurações do servidor SMTP.');
+      return;
+    }
+
+    const isValid = await api.verifyAdminPin(smtpAdminPin.trim());
+    if (!isValid) {
+      setActionError('PIN de Administrador incorreto. Operação não autorizada.');
+      return;
+    }
+
+    setSavingSmtp(true);
+    try {
+      const updated = await api.updateSmtpSettings(smtpConfig);
+      setSmtpConfig(updated);
+      setSmtpAdminPin('');
+      setActionSuccess('Configurações do servidor SMTP gravadas com sucesso!');
+      setTimeout(() => setActionSuccess(null), 5000);
+    } catch (err: any) {
+      setActionError(err.message || 'Falha ao gravar configurações SMTP.');
+    } finally {
+      setSavingSmtp(false);
+    }
+  };
+
+  const handleTestSmtp = async () => {
+    setActionError(null);
+    setTestResult(null);
+
+    if (!testEmailRecipient || !testEmailRecipient.includes('@')) {
+      setActionError('Por favor, indique um endereço de email válido para o envio do teste.');
+      return;
+    }
+
+    if (!smtpConfig.host || !smtpConfig.user) {
+      setActionError('Preencha pelo menos o Servidor (Host) e o Utilizador antes de testar a ligação.');
+      return;
+    }
+
+    setTestingSmtp(true);
+    try {
+      const result = await api.testSmtp(testEmailRecipient, smtpConfig);
+      setTestResult(result);
+    } catch (err: any) {
+      setTestResult({
+        success: false,
+        message: err.message || 'Falha ao ligar ao servidor SMTP. Verifique o host, porta e credenciais.',
+      });
+    } finally {
+      setTestingSmtp(false);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchSmtp();
   }, [currentUser]);
 
   const togglePinReveal = (userId: string) => {
@@ -335,30 +447,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </span>
           </div>
           <h1 className="text-xl font-black text-[#1D2B68] tracking-tight">
-            Configurações — Funcionários & PINs de Acesso
+            Configurações do Sistema
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Tabela restrita de IDs, funcionários e PINs. Para qualquer alteração, criação ou alteração de PIN é solicitada a autorização obrigatória com o PIN de Administrador.
+            Gestão restrita de credenciais, funcionários e servidor de email (SMTP) para envio automático de documentos.
           </p>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => {
-              setNewEmployeeId('');
-              setNewName('');
-              setNewRole('operador');
-              setNewPin('');
-              setNewAdminPin('');
-              setShowNewPin(false);
-              setShowNewAdminPin(false);
-              setNewUserModalOpen(true);
-            }}
-            className="flex items-center gap-2 bg-[#1D2B68] hover:bg-[#15204e] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm hover:shadow"
-          >
-            <UserPlus className="w-4 h-4 text-[#78C6D8]" />
-            <span>+ Novo Funcionário</span>
-          </button>
+          {activeTab === 'users' && (
+            <button
+              onClick={() => {
+                setNewEmployeeId('');
+                setNewName('');
+                setNewRole('operador');
+                setNewPin('');
+                setNewAdminPin('');
+                setShowNewPin(false);
+                setShowNewAdminPin(false);
+                setNewUserModalOpen(true);
+              }}
+              className="flex items-center gap-2 bg-[#1D2B68] hover:bg-[#15204e] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm hover:shadow"
+            >
+              <UserPlus className="w-4 h-4 text-[#78C6D8]" />
+              <span>+ Novo Funcionário</span>
+            </button>
+          )}
           {onNavigateHome && (
             <button
               onClick={onNavigateHome}
@@ -368,6 +482,41 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </button>
           )}
         </div>
+      </div>
+
+      {/* Tabs de Seleção de Configuração */}
+      <div className="flex items-center gap-2 bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200 w-fit">
+        <button
+          type="button"
+          onClick={() => setActiveTab('users')}
+          className={`px-4 py-2 text-xs font-bold rounded-xl flex items-center gap-2 transition-all ${
+            activeTab === 'users'
+              ? 'bg-white text-[#1D2B68] shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>Funcionários & PINs ({users.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('smtp');
+            fetchSmtp();
+          }}
+          className={`px-4 py-2 text-xs font-bold rounded-xl flex items-center gap-2 transition-all ${
+            activeTab === 'smtp'
+              ? 'bg-white text-[#1D2B68] shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Mail className="w-4 h-4" />
+          <span>Servidor SMTP (Envio de Emails)</span>
+          {smtpConfig.enabled && (
+            <span className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-emerald-200"></span>
+          )}
+        </button>
       </div>
 
       {/* Alertas de Notificação */}
@@ -385,8 +534,335 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       )}
 
-      {/* Cartões de Indicadores */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+      {activeTab === 'smtp' ? (
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6 animate-in fade-in">
+          {/* Cabeçalho do Bloco SMTP */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-slate-200 gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="bg-[#1D2B68] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wider">
+                  <Mail className="w-3 h-3 text-[#78C6D8]" />
+                  Servidor de Envio (SMTP)
+                </span>
+                {smtpConfig.enabled ? (
+                  <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3 text-emerald-600" />
+                    Envio Automático Ativo
+                  </span>
+                ) : (
+                  <span className="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                    Envio Desativado
+                  </span>
+                )}
+              </div>
+              <h2 className="text-lg font-black text-[#1D2B68] tracking-tight">
+                Configuração do Servidor de Email (SMTP)
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Configure o seu próprio servidor de email para o disparo automático de <strong>Facturas em PDF</strong>, <strong>Cotações/Orçamentos</strong> e comprovativos de pagamento diretamente para os clientes.
+              </p>
+            </div>
+
+            {/* Toggle Switch de Ativação Geral */}
+            <div className="shrink-0">
+              <label className="inline-flex items-center gap-3 cursor-pointer p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors">
+                <input
+                  type="checkbox"
+                  checked={smtpConfig.enabled}
+                  onChange={(e) => setSmtpConfig({ ...smtpConfig, enabled: e.target.checked })}
+                  className="w-4 h-4 text-[#1D2B68] rounded focus:ring-[#78C6D8]"
+                />
+                <span className="text-xs font-bold text-slate-800">
+                  {smtpConfig.enabled ? 'Envio por Email Ativado' : 'Envio por Email Desativado'}
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* Atalhos Rápidos para Provedores Populares */}
+          <div className="p-4 bg-slate-50/80 rounded-xl border border-slate-200 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#78C6D8]" />
+                <span>Preenchimento Rápido por Provedor</span>
+              </label>
+              <span className="text-[11px] text-slate-400">Clique para preencher as portas e hosts padrão</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <button
+                type="button"
+                onClick={() =>
+                  setSmtpConfig({
+                    ...smtpConfig,
+                    host: 'smtp.gmail.com',
+                    port: 587,
+                    secure: false,
+                  })
+                }
+                className="p-3 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-left transition-all hover:border-[#78C6D8] shadow-2xs group"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="font-bold text-xs text-slate-800 group-hover:text-[#1D2B68]">Google Gmail</p>
+                  <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-bold">Porta 587</span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5">smtp.gmail.com • STARTTLS</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setSmtpConfig({
+                    ...smtpConfig,
+                    host: 'smtp.office365.com',
+                    port: 587,
+                    secure: false,
+                  })
+                }
+                className="p-3 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-left transition-all hover:border-[#78C6D8] shadow-2xs group"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="font-bold text-xs text-slate-800 group-hover:text-[#1D2B68]">Microsoft Outlook / 365</p>
+                  <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-bold">Porta 587</span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5">smtp.office365.com • STARTTLS</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setSmtpConfig({
+                    ...smtpConfig,
+                    port: 465,
+                    secure: true,
+                  })
+                }
+                className="p-3 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-left transition-all hover:border-[#78C6D8] shadow-2xs group"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="font-bold text-xs text-slate-800 group-hover:text-[#1D2B68]">cPanel / Domínio Próprio</p>
+                  <span className="text-[10px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded font-bold">Porta 465 SSL</span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5">mail.seudominio.ao • SSL Direto</p>
+              </button>
+            </div>
+          </div>
+
+          {/* Formulário Principal de Edição SMTP */}
+          <form onSubmit={handleSaveSmtp} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Servidor SMTP (Host) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="smtp.gmail.com ou mail.graficapalanga.ao"
+                  value={smtpConfig.host}
+                  onChange={(e) => setSmtpConfig({ ...smtpConfig, host: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#78C6D8] font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Porta SMTP *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={smtpConfig.port}
+                    onChange={(e) => setSmtpConfig({ ...smtpConfig, port: Number(e.target.value) })}
+                    placeholder="587 ou 465"
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#78C6D8] font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Encriptação / Segurança
+                  </label>
+                  <select
+                    value={smtpConfig.secure ? 'ssl' : 'tls'}
+                    onChange={(e) => setSmtpConfig({ ...smtpConfig, secure: e.target.value === 'ssl' })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white font-medium focus:outline-none focus:ring-2 focus:ring-[#78C6D8]"
+                  >
+                    <option value="tls">STARTTLS (Recomendado 587)</option>
+                    <option value="ssl">SSL Direto (Porta 465)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Utilizador / Email de Autenticação *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="ex.: contacto@graficapalanga.ao ou utilizador@gmail.com"
+                  value={smtpConfig.user}
+                  onChange={(e) => setSmtpConfig({ ...smtpConfig, user: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#78C6D8] font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Palavra-passe / Chave de Aplicação (App Password) *
+                </label>
+                <div className="relative">
+                  <input
+                    type={showSmtpPassword ? 'text' : 'password'}
+                    required
+                    placeholder="••••••••••••"
+                    value={smtpConfig.pass}
+                    onChange={(e) => setSmtpConfig({ ...smtpConfig, pass: e.target.value })}
+                    className="w-full pl-3 pr-10 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#78C6D8] font-mono font-bold"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSmtpPassword(!showSmtpPassword)}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                    title={showSmtpPassword ? 'Ocultar Palavra-passe' : 'Ver Palavra-passe'}
+                  >
+                    {showSmtpPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Para contas Google/Microsoft com 2FA, gere uma "Palavra-passe de Aplicação" nas definições de segurança da conta.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Email do Remetente (From Email) *
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="ex.: facturacao@graficapalanga.ao"
+                  value={smtpConfig.senderEmail}
+                  onChange={(e) => setSmtpConfig({ ...smtpConfig, senderEmail: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#78C6D8] font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Nome do Remetente (From Name) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="ex.: Gráfica Palanga — Facturação"
+                  value={smtpConfig.senderName}
+                  onChange={(e) => setSmtpConfig({ ...smtpConfig, senderName: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#78C6D8] font-medium"
+                />
+              </div>
+            </div>
+
+            {/* Confirmação Obrigatória com PIN de Administrador */}
+            <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-xl space-y-2 mt-4">
+              <label className="block text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-amber-700" />
+                <span>Autorização Obrigatória: PIN de Administrador *</span>
+              </label>
+              <p className="text-[11px] text-amber-800">
+                A gravação das credenciais SMTP exige a validação do PIN de Administrador por motivos de segurança.
+              </p>
+              <div className="relative max-w-xs">
+                <input
+                  type={showSmtpAdminPin ? 'text' : 'password'}
+                  required
+                  value={smtpAdminPin}
+                  onChange={(e) => setSmtpAdminPin(e.target.value)}
+                  placeholder="••••"
+                  className="w-full pl-3 pr-10 py-2 text-xs border border-amber-300 rounded-lg bg-white font-mono font-bold tracking-wider focus:outline-none focus:ring-2 focus:ring-[#1D2B68]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowSmtpAdminPin(!showSmtpAdminPin)}
+                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                  title={showSmtpAdminPin ? 'Ocultar PIN' : 'Ver PIN'}
+                >
+                  {showSmtpAdminPin ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="submit"
+                disabled={savingSmtp}
+                className="px-5 py-2.5 bg-[#1D2B68] hover:bg-[#15204e] text-white text-xs font-bold rounded-xl transition-all shadow-sm hover:shadow disabled:opacity-50 flex items-center gap-2"
+              >
+                {savingSmtp ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle className="w-3.5 h-3.5 text-[#78C6D8]" />
+                )}
+                <span>Guardar Configurações SMTP</span>
+              </button>
+            </div>
+          </form>
+
+          {/* Secção de Teste de Envio em Tempo Real */}
+          <div className="mt-8 pt-6 border-t border-slate-200">
+            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+              <Send className="w-3.5 h-3.5 text-[#1D2B68]" />
+              <span>Testar Conexão e Envio de Email</span>
+            </h3>
+            <p className="text-xs text-slate-500 mb-3">
+              Envie um email de teste para verificar se o host, a porta e a autenticação estão a funcionar corretamente.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-2 max-w-lg">
+              <input
+                type="email"
+                placeholder="Introduza um email para receber o teste..."
+                value={testEmailRecipient}
+                onChange={(e) => setTestEmailRecipient(e.target.value)}
+                className="flex-1 px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#78C6D8] font-medium"
+              />
+              <button
+                type="button"
+                onClick={handleTestSmtp}
+                disabled={testingSmtp}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-xs"
+              >
+                {testingSmtp ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Send className="w-3.5 h-3.5 text-[#78C6D8]" />
+                )}
+                <span>Enviar Teste</span>
+              </button>
+            </div>
+
+            {testResult && (
+              <div
+                className={`mt-3 p-3.5 rounded-xl text-xs font-medium flex items-start gap-2.5 animate-in fade-in ${
+                  testResult.success
+                    ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                    : 'bg-red-50 border border-red-200 text-red-800'
+                }`}
+              >
+                {testResult.success ? (
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                )}
+                <span>{testResult.message}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Cartões de Indicadores */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
           <div className="flex items-center justify-between text-slate-500 text-xs">
             <span>Total de Funcionários</span>
@@ -606,6 +1082,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </table>
         </div>
       </div>
+        </>
+      )}
 
       {/* ======================================================== */}
       {/* MODAL 1: CRIAR NOVO FUNCIONÁRIO (COM PIN ADMIN OBRIGATÓRIO)*/}

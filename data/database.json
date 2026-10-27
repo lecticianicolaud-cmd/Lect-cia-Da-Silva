@@ -760,7 +760,7 @@
       "active": true,
       "createdAt": "2025-07-28T08:00:00.000Z",
       "passwordHash": "$2b$10$xnnE/MWN2nlY2tkJg.QSWuBwPmEczWWIz/fj6/xvzObzaM8wAuDfa",
-      "lastLogin": "2026-10-20T17:21:03.562Z"
+      "lastLogin": "2026-10-27T18:00:36.494Z"
     },
     {
       "id": "usr_operador",
@@ -914,6 +914,17 @@
     "logoStatus": "Logótipo Oficial Configurado (P&Com / Palanga)"
   },
   "auditLogs": [
+    {
+      "id": "log_1793120965989_988mi",
+      "timestamp": "2026-10-27T17:09:25.989Z",
+      "userId": "usr_admin",
+      "userName": "Administrador do Sistema",
+      "userRole": "admin",
+      "action": "ACTUALIZAR_FUNCIONARIO",
+      "entityType": "user",
+      "entityId": "usr_admin",
+      "details": "Funcionário atualizado: Administrador do Sistema (ID: ADM-001)"
+    },
     {
       "id": "log_1792433076665_6un1x",
       "timestamp": "2026-10-19T18:04:36.665Z",

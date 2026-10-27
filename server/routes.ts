@@ -141,7 +141,7 @@ apiRouter.post('/auth/verify-admin-pin', (req: Request, res: Response) => {
   const { pin } = req.body;
   const adminUser = db.getData().users.find((u) => u.role === 'admin' && u.active);
   const validAdminPin = adminUser?.pin || '0000';
-  if (pin && (pin.trim() === validAdminPin || pin.trim() === '0000')) {
+  if (pin && pin.trim() === validAdminPin) {
     return res.json({ valid: true });
   }
   return res.status(401).json({ valid: false, error: 'PIN de Administrador incorreto.' });
@@ -166,7 +166,7 @@ apiRouter.post('/users', authenticate, authorizeRoles('admin'), async (req: Auth
     // Validação estrita do PIN de Administrador para confirmar criação
     const adminUser = db.getData().users.find((u) => u.role === 'admin' && u.active);
     const validAdminPin = adminUser?.pin || '0000';
-    if (!adminPin || (adminPin.trim() !== validAdminPin && adminPin.trim() !== '0000')) {
+    if (!adminPin || adminPin.trim() !== validAdminPin) {
       return res.status(403).json({ error: 'PIN de Administrador incorreto. Confirmação obrigatória.' });
     }
 
@@ -224,7 +224,7 @@ apiRouter.put('/users/:id', authenticate, authorizeRoles('admin'), async (req: A
     // Validação estrita do PIN de Administrador para confirmar qualquer alteração
     const adminUser = db.getData().users.find((u) => u.role === 'admin' && u.active);
     const validAdminPin = adminUser?.pin || '0000';
-    if (!adminPin || (adminPin.trim() !== validAdminPin && adminPin.trim() !== '0000')) {
+    if (!adminPin || adminPin.trim() !== validAdminPin) {
       return res.status(403).json({ error: 'PIN de Administrador incorreto. Confirmação obrigatória.' });
     }
 

@@ -86,8 +86,8 @@ export async function verifyUserCredentials(identifier: string, passwordPlain: s
 
   if (!user || !user.active) return null;
 
-  // Verificar se o PIN corresponde diretamente ou por hash ou fallback '0000'
-  const isDirectPinMatch = (user.pin && user.pin === passwordPlain) || passwordPlain === '0000';
+  // Verificar se o PIN corresponde diretamente ou por hash
+  const isDirectPinMatch = Boolean(user.pin && user.pin === passwordPlain);
   let isHashMatch = false;
   if (!isDirectPinMatch && user.passwordHash) {
     try {
